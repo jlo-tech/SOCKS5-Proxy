@@ -305,7 +305,28 @@ void server_handle_connection(int fd, struct sockaddr addr)
         // Free memory
         free(request_address_port_buf);
         
-        // TODO: Forward incoming data and responses
+        // Forward incoming data and responses
+	char loc[512];
+	int rcc = 0, sdc = 0;
+	while(1)
+	{	
+		// Receive from client and forward to server
+		rcc = recv(fd, loc, 512, MSG_DONTWAIT);
+		if(rcc > 0)
+		{
+			sdc = send(remote_sock, loc, rcc, 0);
+		}
+
+		// Receive from server and forward to client
+		rcc = recv(remote_sock, loc, 512, MSG_DONTWAIT);
+		if(rcc > 0)
+		{
+			sdc = send(fd, loc, rcc, 0);
+		}
+		
+		// Relax workload
+		usleep(10);
+	}
     }
 }
 
@@ -342,23 +363,23 @@ uint8_t server_run()
 	// Accept and handle connections (nonblocking)
 	while(1)
 	{
-        // Accept new connection if there is one
-        struct sockaddr client_addr;
+        	// Accept new connection if there is one
+        	struct sockaddr client_addr;
 		socklen_t clientaddr_len = sizeof(struct sockaddr);
 		int clientfd = accept(sockfd, &client_addr, &clientaddr_len);
 		// Add sockaddr to queue
-        if(clientfd >= 0)
-        {
-            pid_t pid = fork();
-            if(pid == 0)
-            {
-                // handle connection in child
-                server_handle_connection(clientfd, client_addr);
-            }
-            // parent continues with accepting connections...
-        }
-        // Sleep
-        usleep(100);
+        	if(clientfd >= 0)
+        	{
+            		pid_t pid = fork();
+            		if(pid == 0)
+            		{
+                		// handle connection in child
+                		server_handle_connection(clientfd, client_addr);
+            		}
+            		// parent continues with accepting connections...
+        	}
+        	// Sleep
+        	usleep(100);
 	}
     
 	close(sockfd);
@@ -368,7 +389,9 @@ uint8_t server_run()
 
 int main(int argc, char* argv[])
 {
-    server_run();
+	// TODO: Add debug output!
+
+	server_run();
     
 	return 0;
 }
