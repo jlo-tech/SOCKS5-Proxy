@@ -1,3 +1,4 @@
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -44,6 +45,18 @@
  *
  */
 
+
+void dump_buf(const char* prefix, unsigned char* buf, size_t len)
+{
+	printf("%s ", prefix);
+	
+	for(int i = 0; i < len; i++)
+	{
+		printf("%x ", buf[i]);
+	}
+
+	printf("\n");
+}
 
 /* Client */
 
@@ -106,6 +119,8 @@ uint8_t* server_packet_connect_response(uint8_t version, uint8_t method)
 	buf[0] = version;
 	buf[1] = method;
 
+	dump_buf("Server packet connect response: ", buf, 2);
+
 	return buf;
 }
 
@@ -144,16 +159,18 @@ uint8_t* server_packet_reply(uint8_t version, uint8_t reply, uint8_t address_typ
 	buf[4 + (size_t)address_length_additive] = (htons(bind_port) >> 8) & 0xFF;
 	buf[5 + (size_t)address_length_additive] = (htons(bind_port) >> 0) & 0xFF;
 
+	dump_buf("Server packet reply: ", buf, packet_len);
+
 	return buf;
 }
 
 void server_handle_connection(int fd, struct sockaddr addr)
 {
+    printf("New server spawned\n");
     // Make socket blocking again
     int flags = fcntl(fd, F_GETFL, 0);
     fcntl(fd, F_SETFL, flags ^ O_NONBLOCK);
-    
-    // TODO
+     
     while(1)
     {
         int rc = 0, tc = 0;
@@ -179,67 +196,99 @@ void server_handle_connection(int fd, struct sockaddr addr)
         } while (tc > 0);
         
         // Receive client request
-        uint8_t request_buf[5];
+        uint8_t request_buf[4];
         
-        rc = 5;
+        rc = 4;
         do {
-            rc -= read(fd, request_buf + (5 - rc), rc);
+            rc -= read(fd, request_buf + (4 - rc), rc);
         } while (rc > 0);
         
+	printf("Request buf: ");
+	printf("%x ", request_buf[0]);
+	printf("%x ", request_buf[1]);
+	printf("%x ", request_buf[2]);
+	printf("%x ", request_buf[3]);
+	printf("\n");
+
         int atype;
         int alength;
-        switch (request_buf[3])
+	unsigned char l;
+	switch (request_buf[3])
         {
-            case SOCKS_ADDRESS_TYPE_IPv4:
+            case SOCKS_ADDRESS_TYPE_IPv4: {
                 rc = 4;
                 alength = rc;
                 atype = SOCKS_ADDRESS_TYPE_IPv4;
-                break;
-            case SOCKS_ADDRESS_TYPE_DOMAINNAME:
-                rc = request_buf[4];
+	    } break;
+            case SOCKS_ADDRESS_TYPE_DOMAINNAME: {
+		while(recv(fd, &l, 1, 0) == 0);
+                rc = l;
                 alength = rc + 1;
                 atype = SOCKS_ADDRESS_TYPE_DOMAINNAME;
-                break;
-            case SOCKS_ADDRESS_TYPE_IPv6:
+	    } break;
+            case SOCKS_ADDRESS_TYPE_IPv6: {
                 rc = 16;
                 alength = rc;
                 atype = SOCKS_ADDRESS_TYPE_IPv6;
-                break;
+	    } break;
             default:
                 break;
         }
         
-        uint8_t *request_address_port_buf = (uint8_t*)malloc(rc + 2);
+	rc += 2;
+	int tlen = rc;
+        uint8_t *request_address_port_buf = (uint8_t*)malloc(tlen);
         do {
-            rc -= read(fd, request_address_port_buf, rc);
+            rc -= read(fd, request_address_port_buf + (tlen - rc), rc);
         } while (rc > 0);
-        
+
+	printf("Request address port buf: ");
+	for(int i = 0; i < tlen; i++)
+	{
+		printf("%x ", request_address_port_buf[i]);
+	}
+	printf("\n");
 
         // Connect to remote server...
         int remote_sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-        
+       
+	if(remote_sock < 0)
+	{
+		printf("Socket creation failed!\n");
+	}
+
+	uint8_t *request_reply_buf;
+
+	printf("Atype: %d\n", atype);
+
         switch (atype)
         {
             case SOCKS_ADDRESS_TYPE_IPv4: {
+		printf("Hm...\n");
                 // Build IPv4 address
                 struct sockaddr_in raddr;
                 raddr.sin_family = AF_INET;
-                raddr.sin_addr.s_addr = (request_address_port_buf[4] << 24) | (request_address_port_buf[5] << 16) | (request_address_port_buf[6] << 8) | (request_address_port_buf[7] << 0);
-                raddr.sin_port = (request_address_port_buf[8] << 8) | (request_address_port_buf[9] << 0);
+                raddr.sin_addr.s_addr = (request_address_port_buf[0] << 24) | (request_address_port_buf[1] << 16) | (request_address_port_buf[2] << 8) | (request_address_port_buf[3] << 0);
+                raddr.sin_port = (request_address_port_buf[5] << 8) | (request_address_port_buf[4] << 0);
                 // Connect...
                 int err = connect(remote_sock, (struct sockaddr*)&raddr, sizeof(raddr));
-                // Send response...
-                uint8_t *request_reply_buf;
+
+		printf("IPv4 err: %d %d\n", err, ntohs(raddr.sin_port));
+
+		unsigned char abuf[4] = {request_address_port_buf[0], request_address_port_buf[1], request_address_port_buf[2], request_address_port_buf[3]};
+
                 // Check status
-                if(err < 0)
+                if(err >= 0)
                 {
-                    // Return error (reply)
-                    request_reply_buf = server_packet_reply(SOCKS_VERSION, SOCKS_REPLY_HOST_UNREACHABLE, atype, (uint8_t*)&raddr, (request_address_port_buf[4 + alength] << 8) | (request_address_port_buf[4 + alength + 1]));
+		    // Return success (reply)
+                    request_reply_buf = server_packet_reply(SOCKS_VERSION, SOCKS_REPLY_SUCCEEDED, atype, abuf, raddr.sin_port);
                 }
                 else
                 {
-                    // Return success (reply)
-                    request_reply_buf = server_packet_reply(SOCKS_VERSION, SOCKS_REPLY_SUCCEEDED, atype, (uint8_t*)&raddr, (request_address_port_buf[4 + alength] << 8) | (request_address_port_buf[4 + alength + 1]));
+                    // Return error (reply)
+                    request_reply_buf = server_packet_reply(SOCKS_VERSION, SOCKS_REPLY_HOST_UNREACHABLE, atype, abuf, raddr.sin_port);
+
+		    printf("%s\n", strerror(errno));
                 }
             } break;
                 
@@ -255,8 +304,6 @@ void server_handle_connection(int fd, struct sockaddr addr)
                 raddr.sin_port = (request_address_port_buf[4 + alength] << 8) | (request_address_port_buf[4 + alength + 1] << 0);
                 // Connect...
                 int err = connect(remote_sock, (struct sockaddr*)&raddr, sizeof(raddr));
-                // Send response...
-                uint8_t *request_reply_buf;
                 // Check status
                 if(err < 0)
                 {
@@ -277,8 +324,6 @@ void server_handle_connection(int fd, struct sockaddr addr)
                 raddr.sin6_port = (request_address_port_buf[20] << 8) | (request_address_port_buf[21] << 0);
                 // Connect...
                 int err = connect(remote_sock, (struct sockaddr*)&raddr, sizeof(raddr));
-                // Send response...
-                uint8_t *request_reply_buf;
                 // Check status
                 if(err < 0)
                 {
@@ -299,7 +344,7 @@ void server_handle_connection(int fd, struct sockaddr addr)
         // Actually send appropriate response
         int reply_length = 4 + alength + 2;
         do {
-            reply_length -= send(fd, request_address_port_buf, reply_length, 0);
+            reply_length -= send(fd, request_reply_buf, reply_length, 0);
         } while (reply_length > 0);
         
         // Free memory
@@ -314,8 +359,14 @@ void server_handle_connection(int fd, struct sockaddr addr)
 		rcc = recv(fd, loc, 512, MSG_DONTWAIT);
 		if(rcc > 0)
 		{
-			sdc = send(remote_sock, loc, rcc, 0);
+			sdc = recv(remote_sock, loc, rcc, 0);
 		}
+
+		for(int i = 0; i < rcc; i++)
+		{
+			//printf("%c", loc[i]);
+		}
+		//printf("\n");
 
 		// Receive from server and forward to client
 		rcc = recv(remote_sock, loc, 512, MSG_DONTWAIT);
@@ -324,7 +375,7 @@ void server_handle_connection(int fd, struct sockaddr addr)
 			sdc = send(fd, loc, rcc, 0);
 		}
 		
-		// Relax workload
+		// Relax
 		usleep(10);
 	}
     }
