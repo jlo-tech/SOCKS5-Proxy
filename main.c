@@ -268,7 +268,7 @@ void server_handle_connection(int fd, struct sockaddr addr)
                 // Build IPv4 address
                 struct sockaddr_in raddr;
                 raddr.sin_family = AF_INET;
-                raddr.sin_addr.s_addr = (request_address_port_buf[0] << 24) | (request_address_port_buf[1] << 16) | (request_address_port_buf[2] << 8) | (request_address_port_buf[3] << 0);
+                raddr.sin_addr.s_addr = (request_address_port_buf[3] << 24) | (request_address_port_buf[2] << 16) | (request_address_port_buf[1] << 8) | (request_address_port_buf[0] << 0);
                 raddr.sin_port = (request_address_port_buf[5] << 8) | (request_address_port_buf[4] << 0);
                 // Connect...
                 int err = connect(remote_sock, (struct sockaddr*)&raddr, sizeof(raddr));
@@ -359,14 +359,14 @@ void server_handle_connection(int fd, struct sockaddr addr)
 		rcc = recv(fd, loc, 512, MSG_DONTWAIT);
 		if(rcc > 0)
 		{
-			sdc = recv(remote_sock, loc, rcc, 0);
+			sdc = send(remote_sock, loc, rcc, 0);
 		}
 
 		for(int i = 0; i < rcc; i++)
 		{
-			//printf("%c", loc[i]);
+			printf("%c", loc[i]);
 		}
-		//printf("\n");
+		printf("\n");
 
 		// Receive from server and forward to client
 		rcc = recv(remote_sock, loc, 512, MSG_DONTWAIT);
@@ -376,7 +376,7 @@ void server_handle_connection(int fd, struct sockaddr addr)
 		}
 		
 		// Relax
-		usleep(10);
+		usleep(100);
 	}
     }
 }
