@@ -221,8 +221,8 @@ void server_handle_connection(int fd, struct sockaddr addr)
 
         int atype;
         int alength;
-	unsigned char l;
-	switch (request_buf[3])
+	    unsigned char l;
+	    switch (request_buf[3])
         {
             case SOCKS_ADDRESS_TYPE_IPv4: {
                 rc = 4;
@@ -244,31 +244,31 @@ void server_handle_connection(int fd, struct sockaddr addr)
                 break;
         }
         
-	rc += 2;
-	int tlen = rc;
+	    rc += 2;
+	    int tlen = rc;
         uint8_t *request_address_port_buf = (uint8_t*)malloc(tlen);
         do {
             rc -= read(fd, request_address_port_buf + (tlen - rc), rc);
         } while (rc > 0);
 
 #ifdef DEBUG
-	printf("Request address port buf: ");
-	for(int i = 0; i < tlen; i++)
-	{
-		printf("%x ", request_address_port_buf[i]);
-	}
-	printf("\n");
+        printf("Request address port buf: ");
+        for(int i = 0; i < tlen; i++)
+        {
+            printf("%x ", request_address_port_buf[i]);
+        }
+        printf("\n");
 #endif
 
         // Connect to remote server...
         int remote_sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
        
-	if(remote_sock < 0)
-	{
-		printf("Socket creation failed!\n");
-	}
+        if(remote_sock < 0)
+        {
+            printf("Socket creation failed!\n");
+        }
 
-	uint8_t *request_reply_buf;
+        uint8_t *request_reply_buf;
 
 #ifdef DEBUG
 	printf("Atype: %d\n", atype);
@@ -286,15 +286,15 @@ void server_handle_connection(int fd, struct sockaddr addr)
                 int err = connect(remote_sock, (struct sockaddr*)&raddr, sizeof(raddr));
 
 #ifdef DEBUG
-		printf("IPv4 err: %d %d\n", err, ntohs(raddr.sin_port));
+		        printf("IPv4 err: %d %d\n", err, ntohs(raddr.sin_port));
 #endif
 
-		unsigned char abuf[4] = {request_address_port_buf[0], request_address_port_buf[1], request_address_port_buf[2], request_address_port_buf[3]};
+		        unsigned char abuf[4] = {request_address_port_buf[0], request_address_port_buf[1], request_address_port_buf[2], request_address_port_buf[3]};
 
                 // Check status
                 if(err >= 0)
                 {
-		    // Return success (reply)
+		            // Return success (reply)
                     request_reply_buf = server_packet_reply(SOCKS_VERSION, SOCKS_REPLY_SUCCEEDED, atype, abuf, raddr.sin_port);
                 }
                 else
@@ -302,10 +302,10 @@ void server_handle_connection(int fd, struct sockaddr addr)
                     // Return error (reply)
                     request_reply_buf = server_packet_reply(SOCKS_VERSION, SOCKS_REPLY_HOST_UNREACHABLE, atype, abuf, raddr.sin_port);
 
-		    printf("Error: %s\n", strerror(errno));
+		            printf("Error: %s\n", strerror(errno));
                 }
             } break;
-                
+
             case SOCKS_ADDRESS_TYPE_DOMAINNAME: {
                 // Extract address
                 char *addr_str = (char*)malloc(alength);
@@ -365,35 +365,35 @@ void server_handle_connection(int fd, struct sockaddr addr)
         free(request_address_port_buf);
         
         // Forward incoming data and responses
-	char loc[512];
-	int rcc = 0, sdc = 0;
-	while(1)
-	{	
-		// Receive from client and forward to server
-		rcc = recv(fd, loc, 512, MSG_DONTWAIT);
-		if(rcc > 0)
-		{
-			sdc = send(remote_sock, loc, rcc, 0);
-		}
+        char loc[512];
+        int rcc = 0, sdc = 0;
+        while(1)
+        {	
+            // Receive from client and forward to server
+            rcc = recv(fd, loc, 512, MSG_DONTWAIT);
+            if(rcc > 0)
+            {
+                sdc = send(remote_sock, loc, rcc, 0);
+            }
 
 #ifdef DEBUG
-		for(int i = 0; i < rcc; i++)
-		{
-			printf("%c", loc[i]);
-		}
-		fflush(stdout);		
+            for(int i = 0; i < rcc; i++)
+            {
+                printf("%c", loc[i]);
+            }
+            fflush(stdout);		
 #endif
 
-		// Receive from server and forward to client
-		rcc = recv(remote_sock, loc, 512, MSG_DONTWAIT);
-		if(rcc > 0)
-		{
-			sdc = send(fd, loc, rcc, 0);
-		}
+            // Receive from server and forward to client
+            rcc = recv(remote_sock, loc, 512, MSG_DONTWAIT);
+            if(rcc > 0)
+            {
+                sdc = send(fd, loc, rcc, 0);
+            }
 		
-		// Relax
-		usleep(10);
-	}
+            // Relax
+            usleep(10);
+        }
     }
 }
 
@@ -430,23 +430,23 @@ uint8_t server_run()
 	// Accept and handle connections (nonblocking)
 	while(1)
 	{
-        	// Accept new connection if there is one
-        	struct sockaddr client_addr;
+        // Accept new connection if there is one
+        struct sockaddr client_addr;
 		socklen_t clientaddr_len = sizeof(struct sockaddr);
 		int clientfd = accept(sockfd, &client_addr, &clientaddr_len);
 		// Add sockaddr to queue
-        	if(clientfd >= 0)
-        	{
-            		pid_t pid = fork();
-            		if(pid == 0)
-            		{
-                		// handle connection in child
-                		server_handle_connection(clientfd, client_addr);
-            		}
-            		// parent continues with accepting connections...
-        	}
-        	// Sleep
-        	usleep(100);
+        if(clientfd >= 0)
+        {
+        		pid_t pid = fork();
+        		if(pid == 0)
+        		{
+            		// handle connection in child
+            		server_handle_connection(clientfd, client_addr);
+        		}
+        		// parent continues with accepting connections...
+    	}
+        // Sleep
+        usleep(100);
 	}
     
 	close(sockfd);
