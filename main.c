@@ -47,28 +47,28 @@
 
 void dump_buf(const char* prefix, unsigned char* buf, size_t len)
 {
-	printf("%s ", prefix);
-	
-	for(int i = 0; i < len; i++)
-	{
-		printf("%x ", buf[i]);
-	}
+    printf("%s ", prefix);
+    
+    for(int i = 0; i < len; i++)
+    {
+        printf("%x ", buf[i]);
+    }
 
-	printf("\n");
+    printf("\n");
 }
 
 /* Client */
 
 uint8_t* client_packet_connect(uint8_t version, uint8_t nmethods, uint8_t* methods) 
 {
-	uint8_t *buf = (uint8_t*)malloc(2 + nmethods);
-	
-	buf[0] = version;
-	buf[1] = nmethods;
+    uint8_t *buf = (uint8_t*)malloc(2 + nmethods);
+    
+    buf[0] = version;
+    buf[1] = nmethods;
 
-	memcpy(&buf[2], methods, nmethods * sizeof(uint8_t));
+    memcpy(&buf[2], methods, nmethods * sizeof(uint8_t));
 
-	return buf;
+    return buf;
 } 
 
 uint8_t* client_packet_request(uint8_t version, uint8_t command, uint8_t address_type, uint8_t* destination_address, uint16_t destination_port)
@@ -92,37 +92,37 @@ uint8_t* client_packet_request(uint8_t version, uint8_t command, uint8_t address
             break;
     }
     
-	// Calculate packet length
+    // Calculate packet length
     size_t packet_len = 6 + address_length_additive;
 
-	uint8_t *buf = (uint8_t*)malloc(packet_len);
+    uint8_t *buf = (uint8_t*)malloc(packet_len);
 
-	buf[0] = version;
-	buf[1] = command;
-	buf[2] = 0x00;
-	buf[3] = address_type;
+    buf[0] = version;
+    buf[1] = command;
+    buf[2] = 0x00;
+    buf[3] = address_type;
 
-	memcpy(&buf[4], destination_address, address_length_additive);
+    memcpy(&buf[4], destination_address, address_length_additive);
 
-	buf[4 + (size_t)address_length_additive] = (htons(destination_port) >> 8) & 0xFF;
-	buf[5 + (size_t)address_length_additive] = (htons(destination_port) >> 0) & 0xFF;
+    buf[4 + (size_t)address_length_additive] = (htons(destination_port) >> 8) & 0xFF;
+    buf[5 + (size_t)address_length_additive] = (htons(destination_port) >> 0) & 0xFF;
 
-	return buf;
+    return buf;
 }
 
 /* Server */
 uint8_t* server_packet_connect_response(uint8_t version, uint8_t method)
 {
-	uint8_t *buf = (uint8_t*)malloc(2);
+    uint8_t *buf = (uint8_t*)malloc(2);
 
-	buf[0] = version;
-	buf[1] = method;
+    buf[0] = version;
+    buf[1] = method;
 
 #ifdef DEBUG
-	dump_buf("Server packet connect response: ", buf, 2);
+    dump_buf("Server packet connect response: ", buf, 2);
 #endif
 
-	return buf;
+    return buf;
 }
 
 uint8_t* server_packet_reply(uint8_t version, uint8_t reply, uint8_t address_type, uint8_t* bind_address, uint16_t bind_port)
@@ -147,24 +147,24 @@ uint8_t* server_packet_reply(uint8_t version, uint8_t reply, uint8_t address_typ
     }
     
     size_t packet_len = 6 + address_length_additive;
-	
-	uint8_t *buf = (uint8_t*)malloc(packet_len);
+    
+    uint8_t *buf = (uint8_t*)malloc(packet_len);
 
-	buf[0] = version;
-	buf[1] = reply;
-	buf[2] = 0x00;
-	buf[3] = address_type;
+    buf[0] = version;
+    buf[1] = reply;
+    buf[2] = 0x00;
+    buf[3] = address_type;
 
-	memcpy(&buf[4], bind_address, address_length_additive);
+    memcpy(&buf[4], bind_address, address_length_additive);
 
-	buf[4 + (size_t)address_length_additive] = (htons(bind_port) >> 8) & 0xFF;
-	buf[5 + (size_t)address_length_additive] = (htons(bind_port) >> 0) & 0xFF;
+    buf[4 + (size_t)address_length_additive] = (htons(bind_port) >> 8) & 0xFF;
+    buf[5 + (size_t)address_length_additive] = (htons(bind_port) >> 0) & 0xFF;
 
 #ifdef DEBUG
-	dump_buf("Server packet reply: ", buf, packet_len);
+    dump_buf("Server packet reply: ", buf, packet_len);
 #endif
 
-	return buf;
+    return buf;
 }
 
 void server_handle_connection(int fd, struct sockaddr addr)
@@ -211,41 +211,41 @@ void server_handle_connection(int fd, struct sockaddr addr)
         } while (rc > 0);
         
 #ifdef DEBUG
-	printf("Request buf: ");
-	printf("%x ", request_buf[0]);
-	printf("%x ", request_buf[1]);
-	printf("%x ", request_buf[2]);
-	printf("%x ", request_buf[3]);
-	printf("\n");
+    printf("Request buf: ");
+    printf("%x ", request_buf[0]);
+    printf("%x ", request_buf[1]);
+    printf("%x ", request_buf[2]);
+    printf("%x ", request_buf[3]);
+    printf("\n");
 #endif
 
         int atype;
         int alength;
-	    unsigned char l;
-	    switch (request_buf[3])
+        unsigned char l;
+        switch (request_buf[3])
         {
             case SOCKS_ADDRESS_TYPE_IPv4: {
                 rc = 4;
                 alength = rc;
                 atype = SOCKS_ADDRESS_TYPE_IPv4;
-	    } break;
+        } break;
             case SOCKS_ADDRESS_TYPE_DOMAINNAME: {
-		while(recv(fd, &l, 1, 0) == 0);
+        while(recv(fd, &l, 1, 0) == 0);
                 rc = l;
                 alength = rc + 1;
                 atype = SOCKS_ADDRESS_TYPE_DOMAINNAME;
-	    } break;
+        } break;
             case SOCKS_ADDRESS_TYPE_IPv6: {
                 rc = 16;
                 alength = rc;
                 atype = SOCKS_ADDRESS_TYPE_IPv6;
-	    } break;
+        } break;
             default:
                 break;
         }
         
-	    rc += 2;
-	    int tlen = rc;
+        rc += 2;
+        int tlen = rc;
         uint8_t *request_address_port_buf = (uint8_t*)malloc(tlen);
         do {
             rc -= read(fd, request_address_port_buf + (tlen - rc), rc);
@@ -271,7 +271,7 @@ void server_handle_connection(int fd, struct sockaddr addr)
         uint8_t *request_reply_buf;
 
 #ifdef DEBUG
-	printf("Atype: %d\n", atype);
+    printf("Atype: %d\n", atype);
 #endif
 
         switch (atype)
@@ -286,15 +286,15 @@ void server_handle_connection(int fd, struct sockaddr addr)
                 int err = connect(remote_sock, (struct sockaddr*)&raddr, sizeof(raddr));
 
 #ifdef DEBUG
-		        printf("IPv4 err: %d %d\n", err, ntohs(raddr.sin_port));
+                printf("IPv4 err: %d %d\n", err, ntohs(raddr.sin_port));
 #endif
 
-		        unsigned char abuf[4] = {request_address_port_buf[0], request_address_port_buf[1], request_address_port_buf[2], request_address_port_buf[3]};
+                unsigned char abuf[4] = {request_address_port_buf[0], request_address_port_buf[1], request_address_port_buf[2], request_address_port_buf[3]};
 
                 // Check status
                 if(err >= 0)
                 {
-		            // Return success (reply)
+                    // Return success (reply)
                     request_reply_buf = server_packet_reply(SOCKS_VERSION, SOCKS_REPLY_SUCCEEDED, atype, abuf, raddr.sin_port);
                 }
                 else
@@ -302,7 +302,7 @@ void server_handle_connection(int fd, struct sockaddr addr)
                     // Return error (reply)
                     request_reply_buf = server_packet_reply(SOCKS_VERSION, SOCKS_REPLY_HOST_UNREACHABLE, atype, abuf, raddr.sin_port);
 
-		            printf("Error: %s\n", strerror(errno));
+                    printf("Error: %s\n", strerror(errno));
                 }
             } break;
 
@@ -390,7 +390,7 @@ void server_handle_connection(int fd, struct sockaddr addr)
             {
                 sdc = send(fd, loc, rcc, 0);
             }
-		
+        
             // Relax
             usleep(10);
         }
@@ -399,64 +399,64 @@ void server_handle_connection(int fd, struct sockaddr addr)
 
 uint8_t server_run()
 {
-	// Create socket
-	int sockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    // Create socket
+    int sockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
-	// Allow reusing the port
-	int opt = 1;
-	setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (int*)&opt, sizeof(opt));
+    // Allow reusing the port
+    int opt = 1;
+    setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (int*)&opt, sizeof(opt));
 
-	// Fill address info struct
-	struct addrinfo hints;
-	memset(&hints, 0, sizeof(hints));
+    // Fill address info struct
+    struct addrinfo hints;
+    memset(&hints, 0, sizeof(hints));
 
-	hints.ai_family = AF_INET;
-	hints.ai_socktype = SOCK_STREAM;
-	hints.ai_protocol = IPPROTO_TCP;
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_protocol = IPPROTO_TCP;
 
-	struct addrinfo *sock_addr;
-	getaddrinfo(SOCKS_HOST, SOCKS_PORT, &hints, &sock_addr);	
+    struct addrinfo *sock_addr;
+    getaddrinfo(SOCKS_HOST, SOCKS_PORT, &hints, &sock_addr);	
 
-	// Make socket nonblocking
-	int flags = fcntl(sockfd, F_GETFL, 0);
-	fcntl(sockfd, F_SETFL, flags | O_NONBLOCK);
+    // Make socket nonblocking
+    int flags = fcntl(sockfd, F_GETFL, 0);
+    fcntl(sockfd, F_SETFL, flags | O_NONBLOCK);
 
-	// Bind socket
-	bind(sockfd, sock_addr->ai_addr, sock_addr->ai_addrlen);
-	
-	// Listen on socket
-	listen(sockfd, SOCKS_BACKLOG);
+    // Bind socket
+    bind(sockfd, sock_addr->ai_addr, sock_addr->ai_addrlen);
     
-	// Accept and handle connections (nonblocking)
-	while(1)
-	{
+    // Listen on socket
+    listen(sockfd, SOCKS_BACKLOG);
+    
+    // Accept and handle connections (nonblocking)
+    while(1)
+    {
         // Accept new connection if there is one
         struct sockaddr client_addr;
-		socklen_t clientaddr_len = sizeof(struct sockaddr);
-		int clientfd = accept(sockfd, &client_addr, &clientaddr_len);
-		// Add sockaddr to queue
+        socklen_t clientaddr_len = sizeof(struct sockaddr);
+        int clientfd = accept(sockfd, &client_addr, &clientaddr_len);
+        // Add sockaddr to queue
         if(clientfd >= 0)
         {
-        		pid_t pid = fork();
-        		if(pid == 0)
-        		{
-            		// handle connection in child
-            		server_handle_connection(clientfd, client_addr);
-        		}
-        		// parent continues with accepting connections...
-    	}
+                pid_t pid = fork();
+                if(pid == 0)
+                {
+                    // handle connection in child
+                    server_handle_connection(clientfd, client_addr);
+                }
+                // parent continues with accepting connections...
+        }
         // Sleep
         usleep(100);
-	}
+    }
     
-	close(sockfd);
+    close(sockfd);
 
-	return 0;
+    return 0;
 }
 
 int main(int argc, char* argv[])
 {
-	server_run();
+    server_run();
     
-	return 0;
+    return 0;
 }
