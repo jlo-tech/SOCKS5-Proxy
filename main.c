@@ -211,12 +211,12 @@ void server_handle_connection(int fd, struct sockaddr addr)
         } while (rc > 0);
         
 #ifdef DEBUG
-    printf("Request buf: ");
-    printf("%x ", request_buf[0]);
-    printf("%x ", request_buf[1]);
-    printf("%x ", request_buf[2]);
-    printf("%x ", request_buf[3]);
-    printf("\n");
+        printf("Request buf: ");
+        printf("%x ", request_buf[0]);
+        printf("%x ", request_buf[1]);
+        printf("%x ", request_buf[2]);
+        printf("%x ", request_buf[3]);
+        printf("\n");
 #endif
 
         int atype;
@@ -271,7 +271,7 @@ void server_handle_connection(int fd, struct sockaddr addr)
         uint8_t *request_reply_buf;
 
 #ifdef DEBUG
-    printf("Atype: %d\n", atype);
+        printf("Atype: %d\n", atype);
 #endif
 
         switch (atype)
