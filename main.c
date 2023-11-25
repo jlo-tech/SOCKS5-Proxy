@@ -230,9 +230,9 @@ void server_handle_connection(int fd, struct sockaddr addr)
                 atype = SOCKS_ADDRESS_TYPE_IPv4;
         } break;
             case SOCKS_ADDRESS_TYPE_DOMAINNAME: {
-        while(recv(fd, &l, 1, 0) == 0);
+                while(recv(fd, &l, 1, 0) == 0);
                 rc = l;
-                alength = rc + 1;
+                alength = rc;
                 atype = SOCKS_ADDRESS_TYPE_DOMAINNAME;
         } break;
             case SOCKS_ADDRESS_TYPE_IPv6: {
@@ -308,46 +308,61 @@ void server_handle_connection(int fd, struct sockaddr addr)
 
             case SOCKS_ADDRESS_TYPE_DOMAINNAME: {
                 // Extract address
-                char *addr_str = (char*)malloc(alength);
-                memcpy(addr_str, &request_address_port_buf[5], alength);
+                char *addr_str = (char*)malloc(alength + 1);
+                memcpy(addr_str, &request_address_port_buf[0], alength);
                 addr_str[alength] = '\0';
                 // Build address
                 struct sockaddr_in raddr;
                 raddr.sin_family = AF_INET;
                 raddr.sin_addr.s_addr = inet_addr(addr_str);
-                raddr.sin_port = (request_address_port_buf[4 + alength] << 8) | (request_address_port_buf[4 + alength + 1] << 0);
+                raddr.sin_port = (request_address_port_buf[alength + 2] << 8) | (request_address_port_buf[alength + 1] << 0);
                 // Connect...
                 int err = connect(remote_sock, (struct sockaddr*)&raddr, sizeof(raddr));
                 // Check status
                 if(err < 0)
                 {
                     // Return error (reply)
-                    request_reply_buf = server_packet_reply(SOCKS_VERSION, SOCKS_REPLY_HOST_UNREACHABLE, atype, (uint8_t*)&raddr, (request_address_port_buf[4 + alength] << 8) | (request_address_port_buf[4 + alength + 1]));
+                    request_reply_buf = server_packet_reply(SOCKS_VERSION, SOCKS_REPLY_HOST_UNREACHABLE, atype, (uint8_t*)&raddr.sin_addr.s_addr, raddr.sin_port);
                 }
                 else
                 {
                     // Return success (reply)
-                    request_reply_buf = server_packet_reply(SOCKS_VERSION, SOCKS_REPLY_SUCCEEDED, atype, (uint8_t*)&raddr, (request_address_port_buf[4 + alength] << 8) | (request_address_port_buf[4 + alength + 1]));
+                    request_reply_buf = server_packet_reply(SOCKS_VERSION, SOCKS_REPLY_SUCCEEDED, atype, (uint8_t*)&raddr.sin_addr.s_addr, raddr.sin_port);
                 }
             } break;
 
             case SOCKS_ADDRESS_TYPE_IPv6: {
                 struct sockaddr_in6 raddr;
                 raddr.sin6_family = AF_INET6;
-                memcpy(&raddr.sin6_addr, &request_address_port_buf[4], 16);
-                raddr.sin6_port = (request_address_port_buf[20] << 8) | (request_address_port_buf[21] << 0);
+                raddr.sin6_addr.s6_addr[0] = request_address_port_buf[15];
+                raddr.sin6_addr.s6_addr[1] = request_address_port_buf[14];
+                raddr.sin6_addr.s6_addr[2] = request_address_port_buf[13];
+                raddr.sin6_addr.s6_addr[3] = request_address_port_buf[12];
+                raddr.sin6_addr.s6_addr[4] = request_address_port_buf[11];
+                raddr.sin6_addr.s6_addr[5] = request_address_port_buf[10];
+                raddr.sin6_addr.s6_addr[6] = request_address_port_buf[9];
+                raddr.sin6_addr.s6_addr[7] = request_address_port_buf[8];
+                raddr.sin6_addr.s6_addr[8] = request_address_port_buf[7];
+                raddr.sin6_addr.s6_addr[9] = request_address_port_buf[6];
+                raddr.sin6_addr.s6_addr[10] = request_address_port_buf[5];
+                raddr.sin6_addr.s6_addr[11] = request_address_port_buf[4];
+                raddr.sin6_addr.s6_addr[12] = request_address_port_buf[3];
+                raddr.sin6_addr.s6_addr[13] = request_address_port_buf[2];
+                raddr.sin6_addr.s6_addr[14] = request_address_port_buf[1];
+                raddr.sin6_addr.s6_addr[15] = request_address_port_buf[0];
+                raddr.sin6_port = (request_address_port_buf[17] << 8) | (request_address_port_buf[16] << 0);
                 // Connect...
                 int err = connect(remote_sock, (struct sockaddr*)&raddr, sizeof(raddr));
                 // Check status
                 if(err < 0)
                 {
                     // Return error (reply)
-                    request_reply_buf = server_packet_reply(SOCKS_VERSION, SOCKS_REPLY_HOST_UNREACHABLE, atype, (uint8_t*)&raddr, (request_address_port_buf[4 + alength] << 8) | (request_address_port_buf[4 + alength + 1]));
+                    request_reply_buf = server_packet_reply(SOCKS_VERSION, SOCKS_REPLY_HOST_UNREACHABLE, atype, (uint8_t*)&raddr.sin6_addr.s6_addr, raddr.sin6_port);
                 }
                 else
                 {
                     // Return success (reply)
-                    request_reply_buf = server_packet_reply(SOCKS_VERSION, SOCKS_REPLY_SUCCEEDED, atype, (uint8_t*)&raddr, (request_address_port_buf[4 + alength] << 8) | (request_address_port_buf[4 + alength + 1]));
+                    request_reply_buf = server_packet_reply(SOCKS_VERSION, SOCKS_REPLY_SUCCEEDED, atype, (uint8_t*)&raddr.sin6_addr.s6_addr, raddr.sin6_port);
                 }
             } break;
             
